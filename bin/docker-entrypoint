@@ -1,0 +1,23 @@
+#!/bin/bash -e
+
+# Enable jemalloc for reduced memory usage and latency.
+if [ -z "${LD_PRELOAD+x}" ]; then
+    LD_PRELOAD=$(find /usr/lib -name libjemalloc.so.2 -print -quit)
+    export LD_PRELOAD
+fi
+
+# Thruster listens on HTTP_PORT (default 80). PaaS like Railway route public traffic to $PORT.
+# If we don't align them, nothing accepts connections on $PORT → edge errors and bogus CORS messages.
+if [ -z "${THRUSTER_HTTP_PORT:-}" ] && [ -z "${HTTP_PORT:-}" ] && [ -n "${PORT:-}" ]; then
+  export HTTP_PORT="$PORT"
+fi
+
+# If running the rails server then create or migrate existing database
+if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+  ./bin/rails db:prepare
+  # When primary and queue share one DATABASE_URL, db:prepare may never load queue_schema.rb
+  # (schema_migrations already exists). Ensure Solid Queue tables exist before accepting traffic.
+  ./bin/rails solid_queue:ensure_schema
+fi
+
+exec "${@}"
