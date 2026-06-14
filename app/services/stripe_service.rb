@@ -1,26 +1,21 @@
 # frozen_string_literal: true
 
 class StripeService
-  PLANS = {
-    "monthly" => "STRIPE_PRICE_MONTHLY",
-    "annual" => "STRIPE_PRICE_ANNUAL"
-  }.freeze
-
   class << self
     def create_checkout_session(user, team, plan:)
-      price_id = ENV.fetch(PLANS.fetch(plan) { raise ArgumentError, "Invalid plan" })
-      frontend_url = FrontendOrigin.primary.chomp("/")
+      ensure_checkout_ready!
 
       params = {
         mode: "subscription",
         client_reference_id: team.id.to_s,
-        line_items: [ { price: price_id, quantity: 1 } ],
+        line_items: [ { price: StripeConfig.price_id(plan), quantity: 1 } ],
         metadata: {
           team_id: team.id.to_s,
           user_id: user.id.to_s
         },
-        success_url: "#{frontend_url}/app/teams/#{team.id}/billing?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url: "#{frontend_url}/pricing?checkout=cancel"
+        success_url: "#{FrontendOrigin.primary.chomp('/')}/app/teams/#{team.id}/billing?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url: "#{FrontendOrigin.primary.chomp('/')}/pricing?checkout=cancel",
+        allow_promotion_codes: true
       }
 
       if team.stripe_customer_id.present?
@@ -30,6 +25,16 @@ class StripeService
       end
 
       Stripe::Checkout::Session.create(params)
+    end
+
+    def create_billing_portal_session(team)
+      ensure_checkout_ready!
+      raise ArgumentError, "Team has no Stripe customer yet" if team.stripe_customer_id.blank?
+
+      Stripe::BillingPortal::Session.create(
+        customer: team.stripe_customer_id,
+        return_url: "#{FrontendOrigin.primary.chomp('/')}/app/teams/#{team.id}/billing"
+      )
     end
 
     def confirm_checkout_session(user, team, session_id)
@@ -43,7 +48,7 @@ class StripeService
 
     def sync_subscription(license)
       return unless license&.stripe_subscription_id.present?
-      return unless stripe_configured?
+      return unless StripeConfig.enabled?
 
       subscription = Stripe::Subscription.retrieve(license.stripe_subscription_id)
       apply_subscription(license, subscription)
@@ -51,16 +56,18 @@ class StripeService
       nil
     end
 
-    def handle_webhook(payload, sig_header)
-      event = Stripe::Webhook.construct_event(payload, sig_header, ENV.fetch("STRIPE_WEBHOOK_SECRET"))
+    def handle_webhook(event)
+      StripeConfig.configure!
 
       case event.type
       when "checkout.session.completed"
         session = event.data.object
-        team = Team.find_by(id: session.metadata["team_id"])
-        user = User.find_by(id: session.metadata["user_id"])
-        fulfill_pro(team, user, session) if team
-      when "customer.subscription.updated"
+        if session.payment_status == "paid"
+          team = Team.find_by(id: session.metadata["team_id"])
+          user = User.find_by(id: session.metadata["user_id"])
+          fulfill_pro(team, user, session) if team
+        end
+      when "customer.subscription.updated", "customer.subscription.created"
         license = License.find_by(stripe_subscription_id: event.data.object.id)
         apply_subscription(license, event.data.object) if license
       when "customer.subscription.deleted"
@@ -71,10 +78,26 @@ class StripeService
       { received: true }
     end
 
+    def verify_webhook(payload, sig_header)
+      secrets = StripeConfig.webhook_secrets
+      raise KeyError, "Stripe webhook secret is not configured" if secrets.empty?
+
+      secrets.each do |secret|
+        return Stripe::Webhook.construct_event(payload, sig_header, secret)
+      rescue Stripe::SignatureVerificationError
+        next
+      end
+
+      raise Stripe::SignatureVerificationError.new("No matching webhook secret", sig_header)
+    end
+
     private
 
-    def stripe_configured?
-      ENV["STRIPE_SECRET_KEY"].present?
+    def ensure_checkout_ready!
+      return if StripeConfig.configured_for_checkout?
+
+      missing = StripeConfig.missing_checkout_keys.map { |k| StripeConfig.env_hint_for(k) }.join(", ")
+      raise KeyError, "Stripe is not fully configured. Set: #{missing}"
     end
 
     def fulfill_pro(team, user, session)
@@ -102,10 +125,11 @@ class StripeService
       if %w[canceled unpaid incomplete_expired].include?(subscription.status)
         downgrade_license(license)
       else
+        period_end = subscription.respond_to?(:current_period_end) ? subscription.current_period_end : nil
         license.update!(
           tier: "pro",
           status: subscription.status,
-          expires_at: Time.at(subscription.current_period_end)
+          expires_at: period_end ? Time.at(period_end) : nil
         )
       end
     end

@@ -5,12 +5,12 @@ RSpec.describe "Api::V1::Stripe::Webhooks", type: :request do
   let!(:team) { user.teams.first }
 
   before do
-    ENV["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
+    allow(StripeConfig).to receive(:webhook_secrets).and_return([ "whsec_test" ])
   end
 
   describe "POST /api/v1/stripe/webhook" do
     it "returns 400 on invalid signature" do
-      allow(Stripe::Webhook).to receive(:construct_event).and_raise(
+      allow(StripeService).to receive(:verify_webhook).and_raise(
         ::Stripe::SignatureVerificationError.new("bad sig", "sig_header")
       )
 
@@ -33,7 +33,8 @@ RSpec.describe "Api::V1::Stripe::Webhooks", type: :request do
       )
       event = double("Stripe::Event", type: "checkout.session.completed", data: double(object: session_object))
 
-      allow(Stripe::Webhook).to receive(:construct_event).and_return(event)
+      allow(StripeService).to receive(:verify_webhook).and_return(event)
+      allow(StripeService).to receive(:handle_webhook).and_call_original
 
       post "/api/v1/stripe/webhook",
            params: "{}",

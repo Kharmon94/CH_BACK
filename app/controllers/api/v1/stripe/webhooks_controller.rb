@@ -6,7 +6,8 @@ module Api
           payload = request.body.read
           sig_header = request.env["HTTP_STRIPE_SIGNATURE"]
 
-          StripeService.handle_webhook(payload, sig_header)
+          event = StripeService.verify_webhook(payload, sig_header)
+          StripeService.handle_webhook(event)
           head :ok
         rescue ::Stripe::SignatureVerificationError
           render json: { error: "Invalid signature" }, status: :bad_request

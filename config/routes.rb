@@ -15,6 +15,9 @@ Rails.application.routes.draw do
         post "sign_in", to: "sessions#create"
         post "sign_up", to: "registrations#create"
         get "me", to: "me#show"
+        patch "me", to: "me#update"
+        post "forgot_password", to: "passwords#forgot"
+        post "reset_password", to: "passwords#reset"
         get "google", to: "google#start"
         get "google/callback", to: "google#callback"
       end
@@ -27,6 +30,7 @@ Rails.application.routes.draw do
         resource :license, only: [ :show ], controller: "licenses"
         post "billing/checkout", to: "team_checkouts#create"
         post "billing/confirm", to: "team_checkouts#confirm"
+        post "billing/portal", to: "team_checkouts#portal"
       end
 
       resource :license, only: [ :show ]
@@ -58,6 +62,7 @@ Rails.application.routes.draw do
       end
 
       namespace :stripe do
+        get "status", to: "status#show"
         post "webhook", to: "webhooks#create"
       end
     end

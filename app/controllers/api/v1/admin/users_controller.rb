@@ -3,7 +3,7 @@
 module Api
   module V1
     module Admin
-      class UsersController < BaseController
+      class UsersController < Admin::BaseController
         def index
           users = User.order(:email).limit(200)
           render json: users.map { |u| user_json(u) }

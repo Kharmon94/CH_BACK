@@ -17,7 +17,7 @@ module Api
         forbidden("Only team owners can manage billing")
       rescue KeyError => e
         render json: { error: e.message }, status: :service_unavailable
-      rescue Stripe::StripeError => e
+      rescue ::Stripe::StripeError => e
         render json: { error: e.message }, status: :unprocessable_entity
       end
 
@@ -30,6 +30,19 @@ module Api
       rescue CanCan::AccessDenied
         forbidden("Only team owners can manage billing")
       rescue ArgumentError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      def portal
+        authorize! :checkout, current_team
+
+        session = StripeService.create_billing_portal_session(current_team)
+        render json: { url: session.url }
+      rescue CanCan::AccessDenied
+        forbidden("Only team owners can manage billing")
+      rescue ArgumentError, KeyError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue ::Stripe::StripeError => e
         render json: { error: e.message }, status: :unprocessable_entity
       end
     end
