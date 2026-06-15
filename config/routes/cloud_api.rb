@@ -1,0 +1,75 @@
+# frozen_string_literal: true
+
+# Cloud control plane routes — auth, billing, admin, marketing API
+namespace :auth do
+  post "sign_in", to: "sessions#create"
+  post "sign_up", to: "registrations#create"
+  get "me", to: "me#show"
+  patch "me", to: "me#update"
+  post "forgot_password", to: "passwords#forgot"
+  post "reset_password", to: "passwords#reset"
+  get "google", to: "google#start"
+  get "google/callback", to: "google#callback"
+end
+
+post "team_invites/:token/accept", to: "team_invites#accept"
+
+resources :teams, only: [ :index, :create, :show, :update ] do
+  resources :memberships, only: [ :index, :create, :destroy ], controller: "team_memberships"
+  resources :workspaces, only: [ :index, :create, :show, :update, :destroy ]
+  resource :license, only: [ :show ], controller: "licenses"
+  post "billing/checkout", to: "team_checkouts#create"
+  post "billing/confirm", to: "team_checkouts#confirm"
+  post "billing/portal", to: "team_checkouts#portal"
+end
+
+resource :license, only: [ :show ]
+
+resources :linked_databases, only: [ :index, :create, :destroy ] do
+  collection do
+    post :locate
+    get :discover
+  end
+
+  member do
+    post :refresh
+  end
+end
+
+resources :composers, only: [ :index, :show ] do
+  collection do
+    get :search
+  end
+end
+
+resources :exports, only: [ :index, :create, :show ] do
+  collection do
+    post :reserve
+  end
+
+  member do
+    get :download
+  end
+end
+
+post "uploads", to: "uploads#create"
+
+get "sitemap.xml", to: "sitemap#show"
+
+get "local/discover", to: "local/discover#show"
+
+resources :blog_posts, only: [ :index, :show ], param: :slug
+
+namespace :admin do
+  post "sign_in", to: "sessions#create"
+  get "stats", to: "stats#show"
+  resources :licenses, only: [ :index ]
+  resources :users, only: [ :index, :show, :update ]
+  resources :teams, only: [ :index, :show, :update ]
+  resources :blog_posts, only: [ :index, :show, :create, :update, :destroy ]
+end
+
+namespace :stripe do
+  get "status", to: "status#show"
+  post "webhook", to: "webhooks#create"
+end

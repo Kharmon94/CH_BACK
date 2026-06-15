@@ -22,6 +22,15 @@ test:
     database: storage/test_queue.sqlite3
     migrations_paths: db/queue_migrate
 
+desktop:
+  primary:
+    <<: *sqlite
+    database: <%= ENV.fetch("CURSORHELP_PRIMARY_DB") { File.join(ENV.fetch("CURSORHELP_USER_DATA", ENV.fetch("CURSORHELP_DATA_DIR", File.join(Dir.home, ".cursorhelp"))), "desktop.sqlite3") } %>
+  queue:
+    <<: *sqlite
+    database: <%= ENV.fetch("CURSORHELP_QUEUE_DB") { File.join(ENV.fetch("CURSORHELP_USER_DATA", ENV.fetch("CURSORHELP_DATA_DIR", File.join(Dir.home, ".cursorhelp"))), "desktop_queue.sqlite3") } %>
+    migrations_paths: db/queue_migrate
+
 production:
   primary:
     adapter: postgresql

@@ -38,4 +38,5 @@ end
 
 RSpec.configure do |config|
   config.include RequestAuthHelpers, type: :request
+  config.include RequestAuthHelpers, type: :controller
 end

@@ -30,14 +30,27 @@ module Api
         export = nil
         reserve_quota = false
 
+        if DesktopMode.enabled?
+          begin
+            Cloud::LicenseClient.reserve_export!(
+              team_id: current_team.id,
+              token: bearer_token,
+              format: format
+            )
+          rescue ArgumentError => e
+            return forbidden(e.message)
+          end
+        end
+
         current_team.with_lock do
-          if format == "markdown" && !pro? && current_team.export_count >= 1
+          export_count = DesktopMode.enabled? ? cloud_export_count : current_team.export_count
+          if format == "markdown" && !pro? && export_count >= 1
             return forbidden("Free tier allows 1 markdown export per team")
           end
 
           cache = ComposerCache.find_by_composer_id!(linked_db.id, composer_id)
           reserve_quota = format == "markdown" && !pro?
-          current_team.increment!(:export_count) if reserve_quota
+          current_team.increment!(:export_count) if reserve_quota && !DesktopMode.enabled?
 
           export = ExportRecord.create!(
             linked_database_id: linked_db.id,
@@ -52,6 +65,28 @@ module Api
 
         ExportChatJob.perform_later(export.id, team_id: current_team.id, reserve_quota: reserve_quota)
         render json: export_json(export), status: :created
+      end
+
+      def reserve
+        format = params.require(:format)
+
+        unless ExportRecord::FORMATS.include?(format)
+          return render json: { error: "Invalid format" }, status: :unprocessable_entity
+        end
+
+        unless ProFeatureGate.allow?(format: format, license_tier: license_tier)
+          return forbidden("Agent Clone export requires Pro")
+        end
+
+        current_team.with_lock do
+          if format == "markdown" && !pro? && current_team.export_count >= 1
+            return forbidden("Free tier allows 1 markdown export per team")
+          end
+
+          current_team.increment!(:export_count) if format == "markdown" && !pro?
+        end
+
+        render json: { reserved: true, license: license_json(current_team) }
       end
 
       def show

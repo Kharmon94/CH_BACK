@@ -4,6 +4,7 @@ module Api
   module V1
     module TeamScoped
       extend ActiveSupport::Concern
+      include Api::V1::DesktopLicenseBridge
 
       included do
         before_action :set_current_team!
@@ -50,16 +51,6 @@ module Api
         if @current_workspace.blank?
           render json: { error: "X-Workspace-Id header required" }, status: :bad_request
         end
-      end
-
-      def license_tier
-        current_team&.license&.tier || "free"
-      end
-
-      def pro?
-        return true if current_user.admin?
-
-        current_team&.pro?
       end
     end
   end

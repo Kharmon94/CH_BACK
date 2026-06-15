@@ -7,6 +7,31 @@ RSpec.describe "Api::V1::LinkedDatabases", type: :request do
   let!(:workspace) { team.workspaces.first }
   let!(:request_headers) { auth_headers(user, team: team, workspace: workspace) }
 
+  describe "GET /api/v1/linked_databases/discover" do
+    it "returns discovery payload" do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, "state.vscdb")
+        File.write(path, "x" * 64)
+
+        original = ENV["CURSOR_DB_SEARCH_ROOTS"]
+        ENV["CURSOR_DB_SEARCH_ROOTS"] = dir
+        allow_any_instance_of(Cursor::DatabaseDiscoverer).to receive(:windows_paths).and_return([])
+        allow_any_instance_of(Cursor::DatabaseDiscoverer).to receive(:macos_paths).and_return([])
+        allow_any_instance_of(Cursor::DatabaseDiscoverer).to receive(:linux_paths).and_return([])
+        allow_any_instance_of(Cursor::DatabaseDiscoverer).to receive(:wsl_paths).and_return([])
+
+        get "/api/v1/linked_databases/discover", headers: request_headers
+
+        expect(response).to have_http_status(:ok)
+        body = JSON.parse(response.body)
+        expect(body["found"]).to be(true)
+        expect(body["path"]).to eq(path)
+      ensure
+        ENV["CURSOR_DB_SEARCH_ROOTS"] = original
+      end
+    end
+  end
+
   describe "POST /api/v1/linked_databases/locate" do
     it "returns a matching path from search roots" do
       Dir.mktmpdir do |dir|

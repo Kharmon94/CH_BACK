@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Idempotent demo accounts for local dev and explicit staging opt-in (SEED_DEMO_USERS=true).
-unless Rails.env.development? || ENV["SEED_DEMO_USERS"] == "true"
+unless Rails.env.development? || Rails.env.desktop? || ENV["SEED_DEMO_USERS"] == "true"
   puts "Skipping demo user seeds (development only, or set SEED_DEMO_USERS=true)"
 else
   password = ENV["SEED_DEMO_PASSWORD"].presence

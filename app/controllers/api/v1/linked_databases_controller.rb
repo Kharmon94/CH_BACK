@@ -21,6 +21,10 @@ module Api
         render json: { error: e.message }, status: :unprocessable_entity
       end
 
+      def discover
+        render json: Cursor::DatabaseDiscoverer.discover
+      end
+
       def create
         path = params.require(:path).to_s.strip
         Cursor::DatabaseValidator.validate!(path)
