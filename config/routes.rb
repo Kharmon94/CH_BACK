@@ -57,7 +57,9 @@ Rails.application.routes.draw do
 
       namespace :admin do
         post "sign_in", to: "sessions#create"
-        resources :users, only: [ :index, :show ]
+        get "stats", to: "stats#show"
+        resources :licenses, only: [ :index ]
+        resources :users, only: [ :index, :show, :update ]
         resources :teams, only: [ :index, :show, :update ]
       end
 

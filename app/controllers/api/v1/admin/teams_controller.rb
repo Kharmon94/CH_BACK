@@ -4,6 +4,7 @@ module Api
   module V1
     module Admin
       class TeamsController < Admin::BaseController
+        include Api::V1::Admin::LicenseFields
         def index
           teams = Team.includes(:license, :team_memberships).order(:name).limit(200)
           render json: teams.map { |t| team_json(t) }
@@ -41,13 +42,10 @@ module Api
             id: team.id,
             name: team.name,
             slug: team.slug,
+            created_at: team.created_at.iso8601,
             export_count: team.export_count,
             member_count: team.team_memberships.count,
-            license: {
-              tier: team.license&.tier || "free",
-              pro: team.pro?,
-              status: team.license&.status
-            }
+            license: license_json(team)
           }
           if detailed
             data[:workspaces] = team.workspaces.map { |w| { id: w.id, name: w.name, slug: w.slug } }

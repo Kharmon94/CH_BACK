@@ -15,9 +15,10 @@ fi
 # If running the rails server then create or migrate existing database
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   ./bin/rails db:prepare
-  # When primary and queue share one DATABASE_URL, db:prepare may never load queue_schema.rb
-  # (schema_migrations already exists). Ensure Solid Queue tables exist before accepting traffic.
+  # When primary and queue/cache share one DATABASE_URL, db:prepare may never load queue_schema.rb
+  # or cache_schema.rb (schema_migrations already exists). Ensure Solid tables exist before traffic.
   ./bin/rails solid_queue:ensure_schema
+  ./bin/rails solid_cache:ensure_schema
 fi
 
 exec "${@}"
