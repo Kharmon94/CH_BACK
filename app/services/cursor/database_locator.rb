@@ -2,6 +2,7 @@
 
 module Cursor
   class DatabaseLocator
+    CURSOR_DATABASE_FILENAME = "state.vscdb"
     CURSOR_GLOBAL_STORAGE = "AppData/Roaming/Cursor/User/globalStorage".freeze
 
     def self.locate(filename:, byte_size:, last_modified_ms: nil)
@@ -20,7 +21,7 @@ module Cursor
         matches.first
       when 0
         raise ArgumentError,
-          "Could not find that file on the server. Paste the full path below (WSL: /mnt/c/Users/…)."
+          "Could not find state.vscdb on the server. Paste the full path below (WSL: /mnt/c/Users/…/globalStorage/state.vscdb)."
       else
         raise ArgumentError, "Multiple files match. Paste the full path to the correct database."
       end
@@ -40,9 +41,11 @@ module Cursor
       if home
         paths << File.join(home, ".cursor", filename)
         paths << File.join(home, ".config", "Cursor", "User", "globalStorage", filename)
+        paths << File.join(home, ".config", "Cursor", "User", "globalStorage", CURSOR_DATABASE_FILENAME)
       end
 
       paths.concat(Dir.glob("/mnt/c/Users/*/AppData/Roaming/Cursor/User/globalStorage/#{filename}"))
+      paths.concat(Dir.glob("/mnt/c/Users/*/AppData/Roaming/Cursor/User/globalStorage/#{CURSOR_DATABASE_FILENAME}"))
       paths.concat(Dir.glob("/mnt/c/Users/*/AppData/Roaming/Cursor/User/workspaceStorage/**/#{filename}"))
 
       paths.uniq.select { |path| File.file?(path) }

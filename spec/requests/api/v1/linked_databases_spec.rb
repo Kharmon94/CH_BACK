@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Api::V1::LinkedDatabases", type: :request do
-  let(:db_path) { ENV.fetch("CURSOR_TEST_DB", "/home/vgxd/Projects/Production Projects/ChatHistory/state.db") }
+  let(:db_path) { CursorTestDb.path }
   let!(:user) { create_user_with_team.first }
   let!(:team) { user.teams.first }
   let!(:workspace) { team.workspaces.first }
@@ -35,8 +35,11 @@ RSpec.describe "Api::V1::LinkedDatabases", type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
-    it "links a valid database" do
-      skip "Test DB not available" unless File.file?(db_path)
+    it "links state.vscdb the same as legacy state.db copies" do
+      skip "Test DB not available" unless db_path
+
+      expect(%w[.vscdb .db]).to include(File.extname(db_path))
+      expect(Cursor::DatabaseValidator.validate!(db_path)).to be true
 
       post "/api/v1/linked_databases", params: { path: db_path }, headers: request_headers, as: :json
       expect(response).to have_http_status(:created)

@@ -1,14 +1,14 @@
 require "rails_helper"
 
 RSpec.describe "Api::V1::Exports", type: :request do
-  let(:db_path) { ENV.fetch("CURSOR_TEST_DB", "/home/vgxd/Projects/Production Projects/ChatHistory/state.db") }
+  let(:db_path) { CursorTestDb.path }
   let!(:user) { create_user_with_team.first }
   let!(:team) { user.teams.first }
   let!(:workspace) { team.workspaces.first }
   let!(:request_headers) { auth_headers(user, team: team, workspace: workspace) }
 
   before do
-    skip "Test DB not available" unless File.file?(db_path)
+    skip "Test DB not available" unless db_path
 
     @linked = workspace.linked_databases.find_or_create_by!(path: db_path) do |db|
       db.index_status = "indexing"
