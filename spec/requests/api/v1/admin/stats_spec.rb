@@ -22,6 +22,7 @@ RSpec.describe "Api::V1::Admin::Stats", type: :request do
     expect(body["pro_teams_count"]).to eq(License.where(tier: "pro").count)
     expect(body["free_teams_count"]).to eq(body["teams_count"] - body["pro_teams_count"])
     expect(body["total_exports"]).to eq(Team.sum(:export_count))
+    expect(body["published_posts_count"]).to eq(BlogPost.published.count)
 
     expect(body["recent_users"].length).to be <= 5
     expect(body["recent_users"].first).to include("id", "email", "role", "created_at")

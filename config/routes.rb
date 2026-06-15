@@ -55,12 +55,17 @@ Rails.application.routes.draw do
 
       post "uploads", to: "uploads#create"
 
+      get "sitemap.xml", to: "sitemap#show"
+
+      resources :blog_posts, only: [ :index, :show ], param: :slug
+
       namespace :admin do
         post "sign_in", to: "sessions#create"
         get "stats", to: "stats#show"
         resources :licenses, only: [ :index ]
         resources :users, only: [ :index, :show, :update ]
         resources :teams, only: [ :index, :show, :update ]
+        resources :blog_posts, only: [ :index, :show, :create, :update, :destroy ]
       end
 
       namespace :stripe do

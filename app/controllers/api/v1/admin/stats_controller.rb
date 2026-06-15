@@ -17,6 +17,7 @@ module Api
             pro_teams_count: pro_teams_count,
             free_teams_count: teams_count - pro_teams_count,
             total_exports: Team.sum(:export_count),
+            published_posts_count: BlogPost.published.count,
             recent_users: User.order(created_at: :desc).limit(5).map { |u| recent_user_json(u) },
             recent_teams: Team.includes(:license).order(created_at: :desc).limit(5).map { |t| recent_team_json(t) }
           }

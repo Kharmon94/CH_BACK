@@ -5,6 +5,7 @@ class User < ApplicationRecord
 
   has_many :team_memberships, dependent: :destroy
   has_many :teams, through: :team_memberships
+  has_many :blog_posts, foreign_key: :author_id, dependent: :destroy, inverse_of: :author
   has_one_attached :avatar
 
   enum :role, { admin: 0, user: 1 }, validate: true
