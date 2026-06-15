@@ -10,6 +10,17 @@ module Api
         render json: scope.map { |db| linked_database_json(db) }
       end
 
+      def locate
+        path = Cursor::DatabaseLocator.locate(
+          filename: params.require(:filename),
+          byte_size: params.require(:byte_size),
+          last_modified_ms: params[:last_modified_ms]
+        )
+        render json: { path: path }
+      rescue ArgumentError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
+
       def create
         path = params.require(:path).to_s.strip
         Cursor::DatabaseValidator.validate!(path)

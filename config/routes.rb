@@ -36,6 +36,10 @@ Rails.application.routes.draw do
       resource :license, only: [ :show ]
 
       resources :linked_databases, only: [ :index, :create, :destroy ] do
+        collection do
+          post :locate
+        end
+
         member do
           post :refresh
         end
