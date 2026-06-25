@@ -49,4 +49,4 @@ group :development, :test do
   gem "letter_opener_web"
 end
 
-gem "stripe", "~> 19.0"
+gem "stripe", "~> 19.3"
